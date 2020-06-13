@@ -1,0 +1,114 @@
+<?js
+const fs=require('fs')
+const path=require('path')
+const {task='ls', fdir=INIT_DIR}=query
+
+function paths2fdir(paths) {
+  return encodeURIComponent(paths.join(path.sep)||'/')
+}
+function ext(fname) {
+  return (fname.replace(/^.*\.([^\.]+$)|^.*$/g, '$1')||'unknown').toUpperCase()
+}
+function md5(str) {
+  return require('crypto').createHash('md5').update(str).digest('hex')
+}
+function size(m) {
+  const l=['b','k','m','g']
+  while(m>=1024 && l.length>1) {
+    m/=1024
+    l.shift()
+  }
+  return m.toFixed(1)+l[0]
+}
+
+if(task==='dl') {
+  header('Content-Type', 'application/octet-stream')
+  header('Content-Disposition', 'attachment;filename='+encodeURIComponent(path.parse(fdir).base))
+  writefile(fdir)
+}
+
+if(task==='ls') {
+?><meta charset='utf8' />
+<style type="text/css">
+.icon{
+    font-size: 12px;
+    color: #fff;
+    text-align: center;
+    width: 25px;
+    height: 30px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 30px;
+    transform: scale(.6);
+    margin-right: 3px;
+    border-radius: 9px 0 0 0;
+}
+[data-fdir]:hover,[data-dl]:hover{
+  cursor: pointer;
+  color: #3385ff;
+  background: #efc01977;
+}
+.noaccess{
+  color: #f33;
+  font-size: 12px;
+  margin: 10px 0;
+}
+.dir{
+  color: #333;
+  font-weight: bold;
+  font-size: 17px;
+}
+.dir,.file{
+  line-height: 2;
+}
+.data{
+  font-size: 12px;
+  display: inline-block;
+  opacity: .8;
+  margin: 0 10px;
+}
+</style>
+<script type="text/javascript" src='/jquery.js'></script>
+<script type="text/javascript">
+$(document).on('click', '[data-fdir]', function(){
+  location='?fdir='+$(this).data('fdir')
+}).on('click', '[data-dl]', function(){
+  location='?task=dl&fdir='+$(this).data('dl')
+})
+</script><?js
+}
+
+if(task==='ls') {
+  const paths=path.resolve(fdir).split(path.sep)
+  echo(paths.map((r, i)=>{
+    return `<span data-fdir="${paths2fdir(paths.slice(0, i+1))}">${r}</span>`
+  }).concat([
+    `<span data-fdir="${paths2fdir(paths.slice(0, paths.length-1))}">..</span>`
+  ]).join('/'))
+  let fns=[]
+  try{
+    let dirs=[], files=[], noaccess=[]
+    fs.readdirSync(fdir).map(a=>{
+      const stat=fs.lstatSync(fdir+'/'+a)
+      const isDir=stat.isDirectory()
+      try{
+        (isDir? dirs: files).push({fn: a, isDir, stat})
+      }catch(e) {
+        noaccess.push({fn: a, err: 1})
+      }
+    })
+    fns=dirs.sort().concat(files.sort()).concat(noaccess.sort())
+  }catch(e) {
+    echo('<div class="noaccess">无权访问</div>')
+  }
+  fns.map(({fn, isDir, stat, err})=>{
+    let pfdir=paths2fdir(paths.concat(fn))
+    if(err) echo(`<div class="dir" data-noaccess>${fn}</div>`)
+    else if(isDir) echo(`<div class="dir" data-fdir="${pfdir}">${fn}</div>`)
+    else echo(`<div class="file" data-dl="${pfdir}">
+      <span class="icon" style="background-color: #${md5(ext(fn)).substr(0, 6)}">${ext(fn).substr(0, 2)}</span>${fn}
+      <span class="data size">${size(stat.size)}</span>
+    </div>`)
+  })
+}

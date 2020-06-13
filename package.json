@@ -1,0 +1,17 @@
+{
+  "name": "cwg-walker",
+  "version": "1.0.0",
+  "description": "node file walker",
+  "main": "index.js",
+  "author": "1696292264@qq.com",
+  "license": "ISC",
+  "engines": {
+    "node": ">=10"
+  },
+  "bin": {
+    "walk": "./cli.js"
+  },
+  "dependencies": {
+    "cwg-pre-loader": "^2.0.7"
+  }
+}
