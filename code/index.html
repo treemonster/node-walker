@@ -27,9 +27,53 @@ if(task==='dl') {
   writefile(fdir)
 }
 
+if(task==='shell') {
+  header('Content-Type', 'text/json')
+  echo(await new Promise(r=>{
+    const cp=require('child_process')
+    cp.exec(query.cmd, {cwd: fdir}, (e, stdout, stderr)=>{
+      r(JSON.stringify({stdout, stderr}))
+    })
+  }))
+  return
+}
+
 if(task==='ls') {
 ?><meta charset='utf8' />
 <style type="text/css">
+.cmdarea,.list{
+  position: fixed;
+  top: 50px;
+  bottom: 0;
+  overflow: auto;
+}
+.list{
+  width: calc(50% - 50px);
+  left:0;
+  white-space: nowrap;
+}
+.dirn{
+    background: #eee;
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    font-size: 21px;
+    padding: 10px 26px;
+    z-index: 10;
+}
+.cmdarea{
+    position: fixed;
+    right: 0;
+    background: #dcdcdc;
+    padding: 5px 5px;
+    z-index: 11;
+    width: 50%;
+}
+.dirn.pos{
+  visibility: hidden;
+  position: relative;
+}
 .icon{
     font-size: 12px;
     color: #fff;
@@ -69,23 +113,54 @@ if(task==='ls') {
   margin: 0 10px;
 }
 </style>
-<script type="text/javascript" src='/jquery.js'></script>
 <script type="text/javascript">
-$(document).on('click', '[data-fdir]', function(){
-  location='?fdir='+$(this).data('fdir')
-}).on('click', '[data-dl]', function(){
-  location='?task=dl&fdir='+$(this).data('dl')
-})
+document.onclick=function(e) {
+  var k=function(v) { return e.target.getAttribute(v)}
+  var fdir=k('data-fdir'), dl=k('data-dl')
+  if(fdir) location='?fdir='+fdir
+  else if(dl) location='?task=dl&fdir='+dl
+}
+function sendcmd() {
+  if(!cmd.value) return
+  var x=new XMLHttpRequest
+  x.open('GET', '/?fdir=<?js echo(encodeURIComponent(fdir)) ?>&task=shell&cmd='+cmd.value,1)
+  x.onreadystatechange=function(){
+    if(x.readyState^4) return;
+    var a=JSON.parse(x.responseText)
+    stdout1.innerHTML=a.stdout||'<i>empty</i>'
+    stderr1.innerHTML=a.stderr||'<i>empty</i>'
+  }
+  x.send()
+}
 </script><?js
 }
 
 if(task==='ls') {
   const paths=path.resolve(fdir).split(path.sep)
+  for(let g=0; g<2; g++) {
+  echo('<div class="dirn '+(g?'':'pos')+'">')
   echo(paths.map((r, i)=>{
     return `<span data-fdir="${paths2fdir(paths.slice(0, i+1))}">${r}</span>`
   }).concat([
     `<span data-fdir="${paths2fdir(paths.slice(0, paths.length-1))}">..</span>`
   ]).join('/'))
+  echo('</div>')
+  }
+
+  echo(`<div class="cmdarea">
+    <input id="cmd" /><button onclick="sendcmd()">shell</button>
+    <div id="cmd_res">
+      <div id="stdout">
+        <b>stdout</b>
+        <pre id='stdout1'></pre>
+      </div>
+      <div id="stderr">
+        <b>stderr</b>
+        <pre id='stderr1'></pre>
+      </div>
+    </div>
+  </div>`)
+
   let fns=[]
   try{
     let dirs=[], files=[], noaccess=[]
@@ -102,13 +177,15 @@ if(task==='ls') {
   }catch(e) {
     echo('<div class="noaccess">无权访问</div>')
   }
+  echo('<ol class="list">')
   fns.map(({fn, isDir, stat, err})=>{
     let pfdir=paths2fdir(paths.concat(fn))
-    if(err) echo(`<div class="dir" data-noaccess>${fn}</div>`)
-    else if(isDir) echo(`<div class="dir" data-fdir="${pfdir}">${fn}</div>`)
-    else echo(`<div class="file" data-dl="${pfdir}">
+    if(err) echo(`<li class="dir" data-noaccess>${fn}</li>`)
+    else if(isDir) echo(`<li class="dir" data-fdir="${pfdir}">${fn}</li>`)
+    else echo(`<li class="file" data-dl="${pfdir}">
       <span class="icon" style="background-color: #${md5(ext(fn)).substr(0, 6)}">${ext(fn).substr(0, 2)}</span>${fn}
       <span class="data size">${size(stat.size)}</span>
-    </div>`)
+    </li>`)
   })
+  echo('</ol>')
 }
