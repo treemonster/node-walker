@@ -1,6 +1,6 @@
 {
   "name": "cwg-walker",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "node file walker",
   "main": "index.js",
   "author": "1696292264@qq.com",
