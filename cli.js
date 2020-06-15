@@ -1,4 +1,10 @@
 #!/usr/bin/env node
 const walk=require('.')
-walk(__dirname, 9090)
+walk({
+  init_dir: __dirname,
+  port: 9090,
+  // safedir: '',
+  // shell: 0,
+  // upload: 0,
+})
 console.log("server ready on http://127.0.0.1:9090/")

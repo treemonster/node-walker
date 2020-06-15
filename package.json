@@ -1,12 +1,16 @@
 {
   "name": "cwg-walker",
-  "version": "1.1.1",
+  "version": "1.2.2",
   "description": "node file walker",
   "main": "index.js",
   "author": "1696292264@qq.com",
   "license": "ISC",
   "engines": {
     "node": ">=10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/treemonster/node-walker.git"
   },
   "bin": {
     "walk": "./cli.js"

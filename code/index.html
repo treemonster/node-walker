@@ -1,10 +1,21 @@
 <?js
 const fs=require('fs')
 const path=require('path')
-const {task='ls', fdir=INIT_DIR}=query
+let {task, fdir}=query
+task=task||'ls'
+fdir=fdir||INIT_DIR
 
-function paths2fdir(paths) {
-  return encodeURIComponent(paths.join(path.sep)||'/')
+// check under SAFE_DIR
+
+if(SAFE_DIR) {
+  if(path.resolve(fdir).indexOf(path.resolve(SAFE_DIR))!=0) {
+    echo(`<meta charset='utf8'><h1>无权访问</h1><a href="/?fdir=${encodeURIComponent(INIT_DIR)}">返回根目录</a>`)
+    return
+  }
+}
+
+function paths2fdir(pre, paths) {
+  return encodeURIComponent(pre+(paths.join(path.sep)||'/'))
 }
 function ext(fname) {
   return (fname.replace(/^.*\.([^\.]+$)|^.*$/g, '$1')||'unknown').toUpperCase()
@@ -27,7 +38,7 @@ if(task==='dl') {
   writefile(fdir)
 }
 
-if(task==='shell') {
+if(task==='shell' && SHELL) {
   header('Content-Type', 'text/json')
   echo(await new Promise(r=>{
     const cp=require('child_process')
@@ -38,7 +49,7 @@ if(task==='shell') {
   return
 }
 
-if(task==='upfile') {
+if(task==='upfile' && UPLOAD) {
   header('Content-Type', 'text/json')
   echo(await new Promise(r=>{
     fs.writeFile(fdir+'/'+query.fn, postbody, (e)=>{
@@ -77,6 +88,12 @@ if(task==='ls') {
     border-bottom: 1px solid #ccc;
     width: 100px;
     cursor: pointer;
+}
+.predir{
+  color: #999;
+}
+.fdird{
+  color: #0cf;
 }
 .cmdarea{
     position: fixed;
@@ -184,17 +201,21 @@ if(task==='ls') {
 
   echo(`<div class="ctls">
     <div onclick="settype(0)">文件列表</div>
-    <div onclick="settype(1)">shell</div>
-    <div onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="upf" /></div>
+    ${SHELL?'<div onclick="settype(1)">shell</div>':''}
+    ${UPLOAD?'<div onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="upf" /></div>':''}
   </div>`)
 
-  const paths=path.resolve(fdir).split(path.sep)
+  let paths, pre=SAFE_DIR? path.resolve(SAFE_DIR): ''
+  if(SAFE_DIR) {
+    paths=path.resolve(fdir).substr(pre.length).split(path.sep)
+  }else paths=path.resolve(fdir).split(path.sep)
   for(let g=0; g<2; g++) {
   echo('<div class="dirn '+(g?'':'pos')+'">')
+  if(pre) echo(`<span class="predir">${pre.replace(/\\+/g, '/')}</span>`)
   echo(paths.map((r, i)=>{
-    return `<span data-fdir="${paths2fdir(paths.slice(0, i+1))}">${r}</span>`
+    return `<span class="fdird" data-fdir="${paths2fdir(pre, paths.slice(0, i+1))}">${r}</span>`
   }).concat([
-    `<span data-fdir="${paths2fdir(paths.slice(0, paths.length-1))}">..</span>`
+    `<span class="fdird" data-fdir="${paths2fdir(pre, paths.slice(0, paths.length-1))}">..</span>`
   ]).join('/'))
   echo('</div>')
   }
@@ -231,7 +252,7 @@ if(task==='ls') {
   }
   echo('<ol class="list" id="list">')
   fns.map(({fn, isDir, stat, err})=>{
-    let pfdir=paths2fdir(paths.concat(fn))
+    let pfdir=paths2fdir(pre, paths.concat(fn))
     if(err) echo(`<li class="dir" data-noaccess>${fn}</li>`)
     else if(isDir) echo(`<li class="dir" data-fdir="${pfdir}">${fn}</li>`)
     else echo(`<li class="file" data-dl="${pfdir}">
