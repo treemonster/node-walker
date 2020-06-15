@@ -6,5 +6,7 @@ walk({
   // safedir: '',
   // shell: 0,
   // upload: 0,
+  shell: 1,
+  upload: 1,
 })
 console.log("server ready on http://127.0.0.1:9090/")
