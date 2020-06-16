@@ -250,17 +250,55 @@ if(task==='ls') {
   }catch(e) {
     echo('<div class="noaccess">无权访问</div>')
   }
-  echo('<ol class="list" id="list">')
-  fns.map(({fn, isDir, stat, err})=>{
-    let pfdir=paths2fdir(pre, paths.concat(fn))
-    if(err) echo(`<li class="dir" data-noaccess>${fn}</li>`)
-    else if(isDir) echo(`<li class="dir" data-fdir="${pfdir}">${fn}</li>`)
-    else echo(`<li class="file" data-dl="${pfdir}">
-      <span class="icon" style="background-color: #${md5(ext(fn)).substr(0, 6)}">${ext(fn).substr(0, 2)}</span>${fn}
-      <span class="data size">${size(stat.size)}</span>
-    </li>`)
-  })
-  echo('</ol>')
+  echo(((logtable)=>{
+    return logtable(fns.map(({fn, isDir, stat, err})=>{
+      let pfdir=paths2fdir(pre, paths.concat(fn))
+      const ret={
+        dir: 0,
+        file: 0,
+        err: 0,
+        stat,
+        pfdir,
+        fn,
+      }, f=o=>Object.assign(ret, o)
+      if(err) return f({err: 1})
+      if(isDir) return f({dir: 1})
+      return f({file: 1})
+    }).map(({fn, pfdir, dir, file, err, stat})=>{
+      const ret={
+        filename: '',
+        createtime: '',
+        modifytime: '',
+      }, f=(o, e)=>Object.assign(ret, o, e), d=n=>(new Date(n)).toLocaleTimeString()
+      if(ret.err) return f({filename: `<div class="dir" data-noaccess>${fn}</div>`})
+      const tm={
+        createtime: d(stat.birthtime),
+        modifytime: d(stat.mtime),
+      }
+      if(dir) return f({filename: `<div class="dir" data-fdir="${pfdir}">${fn}</div>`}, tm)
+      return f({filename: `<div class="file" data-dl="${pfdir}">
+        <span class="icon" style="background-color: #${md5(ext(fn)).substr(0, 6)}">${ext(fn).substr(0, 2)}</span>${fn}
+        <span class="data size">${size(stat.size)}</span>
+      </div>`}, tm)
+    }))
+  })(data=>{
+    let str=`<table class="list" id="list">`
+    let d0=data[0]||{}, kk=Object.keys(d0)
+    str+=`<tr>`
+    kk.map(k=>{
+      str+=`<td>${k}</td>`
+    })
+    str+=`</tr>`
+    data.map(d=>{
+      str+=`<tr>`
+      kk.map(k=>{
+        str+=`<td>${d[k]}</td>`
+      })
+      str+=`</tr>`
+    })
+    str+=`</table>`
+    return str
+  }))
 }
 ?><script type="text/javascript">
 if(!(localStorage.settype*1)) {
