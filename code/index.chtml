@@ -1,19 +1,55 @@
 <?js
 const fs=require('fs')
 const path=require('path')
-let {task, fdir}=query
+
+const crypto=require('crypto')
+function estr(str, key) {
+  try{
+    const cipher=crypto.createCipher('aes192',key)
+    return cipher.update(str,'utf8','hex')+cipher.final('hex')
+  }catch(e) {return ''}
+}
+function destr(estr, key) {
+  try{
+    const decipher=crypto.createDecipher('aes192',key)
+    return decipher.update(estr,'hex','utf8')+decipher.final('utf8')
+  }catch(e) {return ''}
+}
+function sign(str) {
+  return estr(md5(str+AESKey)+str, AESKey)
+}
+function unsign(sstr) {
+  const ds=destr(sstr, AESKey)
+  const _str=ds.substr(32)
+  const _md5=ds.substr(0, 32)
+  if(md5(_str+AESKey)!==_md5) return ''
+  return _str
+}
+
+function build_xq(o) {
+  let r=[]
+  for(let x in o) {
+    r.push(x+'='+encodeURIComponent(o[x]))
+  }
+  return '/?xq='+sign(r.join('&'))
+}
+
+const {xq}=query
+const dxq=unsign(xq)
+let {task, fdir}=require('querystring').parse(dxq)
+
 task=task||'ls'
-fdir=fdir||INIT_DIR
+fdir=decodeURIComponent(query.fdir||fdir||INIT_DIR)
 
 if(SAFE_DIR) {
   if(path.resolve(fdir).indexOf(path.resolve(SAFE_DIR))!=0) {
-    echo(`<meta charset='utf8'><h1>无权访问</h1><a href="/?fdir=${encodeURIComponent(INIT_DIR)}">返回根目录</a>`)
+    echo(`<meta charset='utf8'><h1>无权访问</h1><a href="${build_xq({fdir: INIT_DIR})}">返回根目录</a>`)
     return
   }
 }
 
-function paths2fdir(pre, paths) {
-  return encodeURIComponent(pre+(paths.join(path.sep)||'/'))
+function paths2fdir(paths) {
+  return encodeURIComponent((SAFE_DIR?path.normalize(SAFE_DIR+'/..')+'/':'')+(paths.join(path.sep)||'/'))
 }
 function ext(fname) {
   return (fname.replace(/^.*\.([^\.]+$)|^.*$/g, '$1')||'unknown').toUpperCase()
@@ -44,6 +80,22 @@ if(task==='shell' && SHELL) {
       r(JSON.stringify({stdout, stderr}))
     })
   }))
+  return
+}
+
+if(task==='rm' && DELETE) {
+  header('Content-Type', 'text/json')
+  try{
+    fs.unlinkSync(fdir)
+    echo('Success')
+  }catch(e) {
+    try{
+      fs.rmdirSync(fdir, {recursive: true})
+      echo('Success')
+    }catch(e) {
+      echo('Failed')
+    }
+  }
   return
 }
 
@@ -151,6 +203,11 @@ if(task==='ls') {
   font-weight: bold;
   font-size: 17px;
 }
+.dir.noaccess{
+    color: #888;
+    font-weight: normal;
+    font-size: 12px;
+}
 .dir,.file{
   line-height: 2;
 }
@@ -181,9 +238,20 @@ if(task==='ls') {
 <script type="text/javascript">
 document.onclick=function(e) {
   var k=function(v) { return e.target.getAttribute(v)}
-  var fdir=k('data-fdir'), dl=k('data-dl')
-  if(fdir) location='?fdir='+fdir
-  else if(dl) location='?task=dl&fdir='+dl
+  var xq=k('data-fdir') || k('data-dl')
+  if(xq) {
+    location=xq
+    return
+  }
+  var rm=k('data-rm')
+  if(rm) {
+    if(!confirm('确认删除 '+k('data-rmfn')+'?')) return;
+    xhr(rm, '', function(res) {
+      alert(res)
+      location.reload()
+    })
+    return
+  }
 }
 function xhr(url, data, cb) {
   var x=new XMLHttpRequest
@@ -196,7 +264,7 @@ function xhr(url, data, cb) {
 }
 function sendcmd() {
   if(!cmd.value) return
-  xhr('/?fdir=<?js echo(encodeURIComponent(fdir)) ?>&task=shell&cmd='+cmd.value, '', function(res) {
+  xhr('<?js echo(build_xq({fdir, task: 'shell'})) ?>&cmd='+cmd.value, '', function(res) {
     var a=JSON.parse(res)
     stdout1.innerHTML=a.stdout||'<i>empty</i>'
     stderr1.innerHTML=a.stderr||'<i>empty</i>'
@@ -211,11 +279,16 @@ function upfile() {
   var f0=upf.files[0]
   n.readAsBinaryString(f0)
   n.onload=function(){
-    xhr('/?fdir=<?js echo(encodeURIComponent(fdir)) ?>&task=upfile&fn='+encodeURIComponent(f0.name), n.result, function(res) {
+    xhr('<?js echo(build_xq({fdir, task: 'upfile'})) ?>&fn='+encodeURIComponent(f0.name), n.result, function(res) {
       alert(res)
       location.reload()
     })
   }
+}
+function goto1() {
+  var dir=prompt('请填写目录')
+  if(!dir) return;
+  location='<?js echo('/?'+(xq||'')+'&fdir=') ?>'+encodeURIComponent(dir)
 }
 </script><?js
 }
@@ -230,13 +303,14 @@ if(task==='ls') {
   let paths, pre=SAFE_DIR? path.resolve(SAFE_DIR+'/..'): ''
   if(SAFE_DIR) {
     paths=path.resolve(fdir).substr(pre.length).split(path.sep)
-  }else paths=path.resolve(fdir).split(path.sep)
+  }else paths=path.resolve(fdir+'/').split(path.sep)
+
   for(let g=0; g<2; g++) {
   echo('<div class="dirn '+(g?'':'pos')+'">')
   if(UPLOAD) echo('<div class="upfile" onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div>')
-  if(pre) echo(`<span class="predir">${pre.replace(/\\+/g, '/')}</span>`)
+  if(!SAFE_DIR) echo('<div class="upfile" onclick="goto1()">前往</div>')
   echo(paths.map((r, i)=>{
-    return `<span class="fdird" data-fdir="${paths2fdir(pre, paths.slice(0, i+1))}">${r}</span>`
+    return `<span class="fdird" data-fdir="${build_xq({fdir: paths2fdir(paths.slice(0, i+1))})}">${r}</span>`
   }).join('/'))
   echo('</div>')
   }
@@ -258,11 +332,11 @@ if(task==='ls') {
   let fns=[]
   try{
     let dirs=[], files=[], noaccess=[]
-    fs.readdirSync(fdir).map(a=>{
-      const stat=fs.lstatSync(fdir+'/'+a)
-      const isDir=stat.isDirectory()
+    fs.readdirSync(fdir+'/').map(a=>{
       try{
-        (isDir? dirs: files).push({fn: a, isDir, stat})
+        const stat=fs.lstatSync(fdir+'/'+a)
+        const isDir=stat.isDirectory()
+        ; (isDir? dirs: files).push({fn: a, isDir, stat})
       }catch(e) {
         noaccess.push({fn: a, err: 1})
       }
@@ -273,7 +347,7 @@ if(task==='ls') {
   }
   echo(((logtable)=>{
     return logtable(fns.map(({fn, isDir, stat, err})=>{
-      let pfdir=paths2fdir(pre, paths.concat(fn))
+      let pfdir=paths2fdir(paths.concat(fn))
       const ret={
         dir: 0,
         file: 0,
@@ -295,13 +369,14 @@ if(task==='ls') {
         let x2=a=>a<10?'0'+a:a
         return [n.getFullYear(), n.getMonth()+1, n.getDate()].map(x2).join('/')+' '+[n.getHours(), n.getMinutes()].map(x2).join(':')
       }
-      if(ret.err) return f({filename: `<div class="dir" data-noaccess>${fn}</div>`})
+      if(err) return f({filename: `<del class="dir noaccess" data-noaccess>${fn}</del>`})
       const tm={
         createtime: d(stat.birthtime),
         modifytime: d(stat.mtime),
+        todo: DELETE? `<div data-rmfn="${fn}" data-rm="${build_xq({fdir: pfdir, task: "rm"})}">删除</div>`: '无',
       }
-      if(dir) return f({filename: `<div class="dir" data-fdir="${pfdir}">${fn}</div>`}, tm)
-      return f({filename: `<div class="file" data-dl="${pfdir}">
+      if(dir) return f({filename: `<div class="dir" data-fdir="${build_xq({fdir: pfdir})}">${fn}</div>`}, tm)
+      return f({filename: `<div class="file" data-dl="${build_xq({fdir: pfdir, task: 'dl'})}">
         <span class="icon" style="background-color: #${md5(ext(fn)).substr(0, 6)}">${ext(fn).substr(0, 2)}</span>${fn}
         <span class="data size">${size(stat.size)}</span>
       </div>`}, tm)
@@ -310,6 +385,7 @@ if(task==='ls') {
         filename: '文件名',
         createtime: '创建时间',
         modifytime: '修改时间',
+        todo: '操作',
       }
       let ret={}
       for(let g in rx) ret[rx[g]]=o[g]
