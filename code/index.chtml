@@ -27,6 +27,7 @@ function unsign(sstr) {
 }
 
 function build_xq(o) {
+  o._=Math.random().toString(36)
   let r=[]
   for(let x in o) {
     r.push(x+'='+encodeURIComponent(o[x]))
