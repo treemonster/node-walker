@@ -11,6 +11,8 @@ module.exports=(opt)=>{
       SHELL: shell,
       UPLOAD: upload,
     },
+    index: 'index.chtml',
+    ext: /\.(html|cjs|chtml)$/,
   })
   return shutdown
 }
