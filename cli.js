@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+let DD=1
 const walk=require('.')
 walk({
   init_dir: __dirname,
@@ -9,5 +10,10 @@ walk({
   // disabledelete: 0, // 设为1时禁止删除文件
   shell: 1,
   upload: 1,
+  override: async _=>new Promise(r=>{
+    setTimeout(_=>r({
+      disabledelete: 1,
+    }), 16)
+  }),
 })
 console.log("server ready on http://127.0.0.1:9090/")
