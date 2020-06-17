@@ -1,7 +1,7 @@
 <?js
 const fs=require('fs')
 const path=require('path')
-
+const PATH2=PATH||'/'
 const crypto=require('crypto')
 function estr(str, key, iv) {
   try{
@@ -36,7 +36,7 @@ function build_xq(o) {
   for(let x in o) {
     r.push(x+'='+encodeURIComponent(o[x]))
   }
-  return '/?xq='+sign(r.join('&'))
+  return PATH2+'?xq='+sign(r.join('&'))
 }
 
 const {xq}=query
@@ -294,7 +294,7 @@ function upfile() {
 function goto1() {
   var dir=prompt('请填写目录')
   if(!dir) return;
-  location='<?js echo('/?'+(xq||'')+'&fdir=') ?>'+encodeURIComponent(dir)
+  location='<?js echo(PATH2+'?'+(xq||'')+'&fdir=') ?>'+encodeURIComponent(dir)
 }
 function mkdir() {
   var dir=prompt('请填写文件夹名')

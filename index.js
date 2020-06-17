@@ -1,7 +1,7 @@
 const server=require('cwg-pre-loader/simple-server')
 
 module.exports=(opt)=>{
-  const {init_dir, port, safedir, shell, upload, disabledelete}=opt
+  const {init_dir, port, safedir, shell, upload, disabledelete, path}=opt
   const AESKey=(Math.random().toString(36)+Date.now().toString(36)).match(/.{16}$/)[0]
   const AESKeyIV=(Math.random().toString(36)+Date.now().toString(36)).match(/.{16}$/)[0]
   const shutdown=server({
@@ -16,6 +16,7 @@ module.exports=(opt)=>{
       AESKey,
       AESKeyIV,
       Buffer,
+      PATH: path,
     },
     index: 'index.chtml',
     ext: /\.(html|cjs|chtml)$/,
