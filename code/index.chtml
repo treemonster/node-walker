@@ -3,26 +3,30 @@ const fs=require('fs')
 const path=require('path')
 
 const crypto=require('crypto')
-function estr(str, key) {
+function estr(str, key, iv) {
   try{
-    const cipher=crypto.createCipher('aes192',key)
+    key=Buffer.from(key, 'utf8')
+    iv=Buffer.from(iv, 'utf8')
+    const cipher=crypto.createCipheriv('aes-128-cbc', key, iv)
     return cipher.update(str,'utf8','hex')+cipher.final('hex')
-  }catch(e) {return ''}
+  }catch(e) {console.log(e);return ''}
 }
-function destr(estr, key) {
+function destr(estr, key, iv) {
   try{
-    const decipher=crypto.createDecipher('aes192',key)
+    key=Buffer.from(key, 'utf8')
+    iv=Buffer.from(iv, 'utf8')
+    const decipher=crypto.createDecipheriv('aes-128-cbc',key,iv)
     return decipher.update(estr,'hex','utf8')+decipher.final('utf8')
   }catch(e) {return ''}
 }
 function sign(str) {
-  return estr(md5(str+AESKey)+str, AESKey)
+  return estr(md5(AESKeyIV+str+AESKey)+str, AESKey, AESKeyIV)
 }
 function unsign(sstr) {
-  const ds=destr(sstr, AESKey)
+  const ds=destr(sstr, AESKey, AESKeyIV)
   const _str=ds.substr(32)
   const _md5=ds.substr(0, 32)
-  if(md5(_str+AESKey)!==_md5) return ''
+  if(md5(AESKeyIV+_str+AESKey)!==_md5) return ''
   return _str
 }
 
@@ -119,6 +123,20 @@ if(task==='upfile' && UPLOAD) {
   }))
   return
 }
+if(task==='mkdir' && UPLOAD) {
+  header('Content-Type', 'text/json')
+  echo(await new Promise(r=>{
+    const fn=path.parse(query.mk).base.trim()
+    try{
+      if(!fn) throw 0
+      fs.mkdirSync(fdir+'/'+fn)
+      r('Success')
+    }catch(e) {
+      r('Failed')
+    }
+  }))
+  return
+}
 
 if(task==='ls') {
 ?><meta charset='utf8' />
@@ -137,19 +155,6 @@ if(task==='ls') {
     font-size: 21px;
     padding: 10px;
     z-index: 10;
-}
-.ctls{
-  position: fixed;
-    right: 0;
-    top: 50px;
-    background: #eee;
-    z-index: 22;
-}
-.ctls div{
-  padding: 5px 10px;
-    border-bottom: 1px solid #ccc;
-    width: 100px;
-    cursor: pointer;
 }
 .predir{
   color: #999;
@@ -291,15 +296,19 @@ function goto1() {
   if(!dir) return;
   location='<?js echo('/?'+(xq||'')+'&fdir=') ?>'+encodeURIComponent(dir)
 }
+function mkdir() {
+  var dir=prompt('请填写文件夹名')
+  if(!dir) return;
+  xhr('<?js echo(build_xq({fdir, task: 'mkdir'})) ?>&mk='+encodeURIComponent(dir), '', function(res) {
+    alert(res)
+    location.reload()
+  })
+}
+
 </script><?js
 }
 
 if(task==='ls') {
-
-  echo(`<div class="ctls">
-    <div onclick="settype(0)">文件列表</div>
-    ${SHELL?'<div onclick="settype(1)">shell</div>':''}
-  </div>`)
 
   let paths, pre=SAFE_DIR? path.resolve(SAFE_DIR+'/..'): ''
   if(SAFE_DIR) {
@@ -308,8 +317,13 @@ if(task==='ls') {
 
   for(let g=0; g<2; g++) {
   echo('<div class="dirn '+(g?'':'pos')+'">')
-  if(UPLOAD) echo('<div class="upfile" onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div>')
+  if(UPLOAD) echo('<div class="upfile" onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div><div class="upfile" onclick="mkdir()">新建文件夹</div>')
   if(!SAFE_DIR) echo('<div class="upfile" onclick="goto1()">前往</div>')
+
+  echo(`<div class="upfile" id="settype0${g}" onclick="settype(0)">文件列表</div>`)
+  SHELL && echo(`<div class="upfile" id="settype1${g}" onclick="settype(1)">shell</div>`)
+  echo('<hr />')
+
   echo(paths.map((r, i)=>{
     return `<span class="fdird" data-fdir="${build_xq({fdir: paths2fdir(paths.slice(0, i+1))})}">${r}</span>`
   }).join('/'))
@@ -415,8 +429,10 @@ if(task==='ls') {
 if(!(localStorage.settype*1)) {
   cmdarea.className='cmdarea hidden'
   list.className='list'
+  settype01.style.display=settype00.style.display='none'
 }else{
   cmdarea.className='cmdarea'
   list.className='list hidden'
+  settype10.style.display=settype11.style.display='none'
 }
 </script>
