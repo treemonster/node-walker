@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-let DD=1
 const walk=require('.')
 walk({
   init_dir: __dirname,
@@ -10,7 +9,8 @@ walk({
   // disabledelete: 0, // 设为1时禁止删除文件
   shell: 1,
   upload: 1,
-  override: async _=>new Promise(r=>{
+  override: async req=>new Promise(r=>{
+  	console.log(req.url, req.headers)
     setTimeout(_=>r({
       disabledelete: 1,
     }), 16)

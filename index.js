@@ -17,7 +17,7 @@ module.exports=(opt)=>{
   const shutdown=server({
     dir: __dirname+'/code',
     listen: port,
-    globals: async _=>genGlobals(Object.assign({}, defaultOpts, override? await override(): {})),
+    globals: async req=>genGlobals(Object.assign({}, defaultOpts, override? await override(req): {})),
     index: 'index.chtml',
     ext: /\.(html|cjs|chtml)$/,
   })
