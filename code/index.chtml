@@ -259,6 +259,15 @@ if(task==='ls') {
     cursor: pointer;
     vertical-align: text-top;
 }
+.uploadproc{
+  position: fixed;
+  bottom: 0;
+  height: 10px;
+  font-size: 1px;
+  width: 100%;
+  z-index: 99;
+  left: 0;
+}
 </style>
 <script type="text/javascript">
 document.onclick=function(e) {
@@ -284,6 +293,9 @@ function xhr(url, data, cb) {
   x.onreadystatechange=function(){
     if(x.readyState^4) return;
     cb(x.responseText)
+  }
+  x.upload.onprogress=function(e) {
+    updateproc(e.loaded/e.total*100|0)
   }
   x.send(data)
 }
@@ -323,6 +335,21 @@ function mkdir() {
     location.reload()
   })
 }
+function updateproc(p) {
+  if(p==0 || p==100) {
+    uploadproc.style.display='none'
+    return
+  }
+  uploadproc.style.display='block'
+  uploadproc.style.width=p+'%'
+  var g=(255*p/100)|0, r=255*(100-p)/100|0
+  uploadproc.style.background='rgb('+r+','+g+',0)'
+}
+
+function uploadfile() {
+  if(uploadproc.style.display=='block') return alert('请等当前文件上传完成')
+  upf.click()
+}
 
 </script><?js
 }
@@ -342,7 +369,7 @@ if(task==='ls') {
     <span ${DELETE? '': 'class="dis"'}>删除</span>
     <span ${!SAFE_DIR? '': 'class="dis"'}>全目录</span>
   </div>`)
-  if(UPLOAD) echo('<div class="upfile" onclick="upf.click()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div><div class="upfile" onclick="mkdir()">新建文件夹</div>')
+  if(UPLOAD) echo('<div class="upfile" onclick="uploadfile()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div><div class="upfile" onclick="mkdir()">新建文件夹</div>')
   if(!SAFE_DIR) echo('<div class="upfile" onclick="goto1()">前往</div>')
 
   echo(`<div class="upfile" id="settype0${g}" onclick="settype(0)">文件列表</div>`)
@@ -461,3 +488,4 @@ if(!(localStorage.settype*1)) {
   settype10.style.display=settype11.style.display='none'
 }
 </script>
+<div class='uploadproc' id='uploadproc'></div>
