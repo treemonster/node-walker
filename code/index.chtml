@@ -401,7 +401,7 @@ if(task==='ls') {
     let dirs=[], files=[], noaccess=[]
     fs.readdirSync(fdir+'/').map(a=>{
       try{
-        const stat=fs.lstatSync(fdir+'/'+a)
+        const stat=fs.statSync(fdir+'/'+a)
         const isDir=stat.isDirectory()
         ; (isDir? dirs: files).push({fn: a, isDir, stat})
       }catch(e) {
