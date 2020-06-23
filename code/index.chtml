@@ -314,7 +314,7 @@ function settype(n) {
 function upfile() {
   var n=new FileReader
   var f0=upf.files[0]
-  n.readAsBinaryString(f0)
+  n.readAsArrayBuffer(f0)
   n.onload=function(){
     xhr('<?js echo(build_xq({fdir, task: 'upfile'})) ?>&fn='+encodeURIComponent(f0.name), n.result, function(res) {
       alert(res)
