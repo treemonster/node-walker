@@ -7,8 +7,10 @@ walk({
   // shell: 0, // 设为1时允许远程命令，如果设置了安全目录，那么这一项会被忽略，即shell不可用
   // upload: 0, // 设为1时允许上传文件，存在重名文件时尝试往文件名之后家加数字
   // disabledelete: 0, // 设为1时禁止删除文件
+  // screenshot: 0, // 设为1时允许读取屏幕截图，默认为0。不允许shell时screenshot参数设置无效
   shell: 1,
   upload: 1,
+  screenshot: 1,
   override: async req=>new Promise(r=>{
   	console.log(req.url, req.headers)
     setTimeout(_=>r({

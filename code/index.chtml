@@ -77,6 +77,14 @@ if(task==='dl') {
   writefile(fdir)
 }
 
+if(task==='screenshot' && SCREENSHOT) {
+  const screenshot=require('screenshot-desktop')
+  img=await screenshot()
+  header('Content-Type', 'image/png')
+  writefile(img)
+  return
+}
+
 if(task==='shell' && SHELL) {
   header('Content-Type', 'text/json')
   echo(await new Promise(r=>{
@@ -322,6 +330,9 @@ function upfile() {
     })
   }
 }
+function screenshot() {
+  window.open('<?js echo(build_xq({task: 'screenshot'})) ?>')
+}
 function goto1() {
   var dir=prompt('请填写目录')
   if(!dir) return;
@@ -368,12 +379,14 @@ if(task==='ls') {
     <span ${SHELL? '': 'class="dis"'}>shell</span>
     <span ${DELETE? '': 'class="dis"'}>删除</span>
     <span ${!SAFE_DIR? '': 'class="dis"'}>全目录</span>
+    <span ${SCREENSHOT? '': 'class="dis"'}>屏幕截图</span>
   </div>`)
   if(UPLOAD) echo('<div class="upfile" onclick="uploadfile()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div><div class="upfile" onclick="mkdir()">新建文件夹</div>')
   if(!SAFE_DIR) echo('<div class="upfile" onclick="goto1()">前往</div>')
 
   echo(`<div class="upfile" id="settype0${g}" onclick="settype(0)">文件列表</div>`)
   SHELL && echo(`<div class="upfile" id="settype1${g}" onclick="settype(1)">shell</div>`)
+  SCREENSHOT && echo(`<div class="upfile" onclick="screenshot()">屏幕截图</div>`)
   echo('<hr />')
 
   echo(paths.map((r, i)=>{
