@@ -75,6 +75,7 @@ if(task==='dl') {
   header('Content-Type', 'application/octet-stream')
   header('Content-Disposition', 'attachment;filename='+encodeURIComponent(path.parse(fdir).base))
   writefile(fdir)
+  return
 }
 
 if(task==='screenshot' && SCREENSHOT) {
@@ -267,6 +268,10 @@ if(task==='ls') {
     cursor: pointer;
     vertical-align: text-top;
 }
+.upfile:hover{
+  background: #eee;
+  color: #666;
+}
 .uploadproc{
   position: fixed;
   bottom: 0;
@@ -275,6 +280,9 @@ if(task==='ls') {
   width: 100%;
   z-index: 99;
   left: 0;
+}
+.chg{
+  background: #fbff7d;
 }
 </style>
 <script type="text/javascript">
@@ -384,8 +392,8 @@ if(task==='ls') {
   if(UPLOAD) echo('<div class="upfile" onclick="uploadfile()">上传文件<input onchange="upfile()" type="file" id="'+(g?'':'upf')+'" /></div><div class="upfile" onclick="mkdir()">新建文件夹</div>')
   if(!SAFE_DIR) echo('<div class="upfile" onclick="goto1()">前往</div>')
 
-  echo(`<div class="upfile" id="settype0${g}" onclick="settype(0)">文件列表</div>`)
-  SHELL && echo(`<div class="upfile" id="settype1${g}" onclick="settype(1)">shell</div>`)
+  echo(`<div class="upfile chg" id="settype0${g}" onclick="settype(0)">文件列表</div>`)
+  SHELL && echo(`<div class="upfile chg" id="settype1${g}" onclick="settype(1)">shell</div>`)
   SCREENSHOT && echo(`<div class="upfile" onclick="screenshot()">屏幕截图</div>`)
   echo('<hr />')
 
@@ -468,7 +476,7 @@ if(task==='ls') {
         todo: '操作',
       }
       let ret={}
-      for(let g in rx) ret[rx[g]]=o[g]
+      for(let g in rx) ret[rx[g]]=o[g]||''
       return ret
     }), [60,20,20])
   })((data,width)=>{
